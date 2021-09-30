@@ -1,15 +1,10 @@
 let funcionalities = {}
 funcionalities.getAllRoutes = (app) => {
-    var route, routes = [];
+    var routes = [];
 
-    app._router.stack.forEach(function(middleware){
-        if(middleware.route){
-            routes.push(middleware.route);
-        } else if(middleware.name === 'router'){
-            middleware.handle.stack.forEach(function(handler){
-                route = handler.route;
-                route && routes.push(route.path);
-            });
+    app.stack.forEach(function(stack){
+        if(stack.route){
+            routes.push({"path": stack.route.path, "method": stack.route.methods});
         }
     });
 

@@ -1,5 +1,5 @@
 /* Libaries */
-const { Router } = require('express');
+const { Router, response } = require('express');
 const express = require('express')
 var app = express();
 const bodyParser = require("body-parser")
@@ -7,9 +7,7 @@ const {match} = require('path-to-regexp')
 const utils = require('./utils/utils')
 
 /* Routes */
-const bank_account = require('./controllers/bank_account.js')
-const transactions = require('./controllers/transactions.js')
-const users = require('./controllers/users.js')
+const controllers = require('./controllers/controller.js')
 
 /* Setting Body Parser */
 app.use(bodyParser.urlencoded({ extended: false }))
@@ -19,9 +17,12 @@ app.use(bodyParser.json())
 const queries = require("./connection/queries")
 
 /* Setting routes */
-app.use('/', bank_account)
-app.use('/', transactions)
-app.use('/', users)
+app.use('/', controllers)
+
+/* Check typos in URL */
+app.get("*", function (request, response){
+    response.send({"message":"This URL is not implemented in this project, you may want to take a closer look on our documentation for better understanding.", "documentation": "https://github.com/dc143c/","routes": controllers.allRoutes})
+})
 
 /* Application start with database availability verification */
 port = 80

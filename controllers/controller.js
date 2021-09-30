@@ -1,95 +1,9 @@
 const express = require('express')
 const router = express.Router()
 const pgsql = require("../connection/queries")
+const utils = require("../utils/utils")
 
 module.exports = router
-
-router.get(`/user/:filter?`, async function (req, res) {
-    if(!req.params.filter){
-        pgsql.getAllPersons().then((response) => {
-            res.send(response.rows)
-        }).catch((err) => {
-            res.send(err)
-        })
-        return
-    } if(isNaN(parseInt(req.params.filter))){
-        let nome = '%' + req.params.filter + '%'
-        pgsql.getOnePersonByName(nome).then((response) => {
-            res.send(response.rows)
-        }).catch((err) => {
-            res.send(err)
-        })
-        return
-    } if (!isNaN(parseInt(req.params.filter))){
-        pgsql.getOnePerson(req.params.filter).then((response) => {
-            res.send(response.rows)
-        }).catch((err) => {
-            res.send(err)
-        })
-        return
-    }
-})
-
-router.post('/user', async function (req, res) {
-    if(!req.body.nome){
-        res.status(400).send({"Error": "Missing name."})
-        return
-    }
-    if(!req.body.cpf){
-        res.status(400).send({"Error": "Missing CPF document."})
-        return
-    }
-    if(!req.body.datanascimento){
-        res.status(400).send({"Error": "Missing birthday date."})
-        return
-    }
-
-    pgsql.createNewUser(req.body.nome, req.body.cpf, req.body.datanascimento).then((response) => {
-        res.status(201).send({"status": "Created successfully user"})
-    }).catch((err) => {
-        res.send(err)
-    })
-
-    return
-})
-
-router.get('/user/:id/bank-account', async function (req, res) {
-    if(parseInt(req.params.id) <= 0){
-        res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
-        return;
-    }
-    pgsql.getUserBankAccount(req.params.id).then((response) => {
-        res.status(200).send(response.rows)
-    }).catch((err) => {
-        res.send(err)
-    })
-    return
-})
-
-router.post('/user/:id/bank-account', async function (req, res) {    
-    if(parseInt(req.params.id) <= 0){
-        res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
-        return;
-    }
-    if(!req.body.saldo){
-        return res.status(400).send({"message": "Invalid total balance."})
-    }
-    
-    if(!req.body.limiteSaqueDiario){
-        return res.status(400).send({"message": "Invalid balance withdraw."})
-    }
-    
-    if(!req.body.saldo){
-        return res.status(400).send({"message": "Invalid balance withdraw."})
-    }
-
-    pgsql.createUserBankAccount(req.params.id, req.body.saldo, req.body.limiteSaqueDiario).then((response) => {
-        res.status(201).send(response.rows)
-    }).catch((err) => {
-        res.send(err)
-    })
-    return
-})
 
 router.post('/user/bank-account', async function (req, res) {    
     /* Criando user */
@@ -131,6 +45,45 @@ router.post('/user/bank-account', async function (req, res) {
         res.send(err)
     })
 
+    return
+})
+
+router.get(`/user/:filter?`, async function (req, res) {
+    if(!req.params.filter){
+        pgsql.getAllPersons().then((response) => {
+            res.send(response.rows)
+        }).catch((err) => {
+            res.send(err)
+        })
+        return
+    } if(isNaN(parseInt(req.params.filter))){
+        let nome = '%' + req.params.filter + '%'
+        pgsql.getOnePersonByName(nome).then((response) => {
+            res.send(response.rows)
+        }).catch((err) => {
+            res.send(err)
+        })
+        return
+    } if (!isNaN(parseInt(req.params.filter))){
+        pgsql.getOnePerson(req.params.filter).then((response) => {
+            res.send(response.rows)
+        }).catch((err) => {
+            res.send(err)
+        })
+        return
+    }
+})
+
+router.get('/user/:id/bank-account', async function (req, res) {
+    if(parseInt(req.params.id) <= 0){
+        res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
+        return;
+    }
+    pgsql.getUserBankAccount(req.params.id).then((response) => {
+        res.status(200).send(response.rows)
+    }).catch((err) => {
+        res.send(err)
+    })
     return
 })
 
@@ -305,6 +258,8 @@ router.post('/user/:id/bank-account/:id_conta/toogleActivity', async function (r
 
     return
 })
+
+router.allRoutes = utils.getAllRoutes(router);
 
 /*
 toogleAtivityFromAccount
