@@ -1,0 +1,33 @@
+{
+  "name": "banking-api",
+  "version": "1.0.0",
+  "description": "Banking API para o teste de desenvolvedor da Docker.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dc143c/banking-api.git"
+  },
+  "keywords": [
+    "banking",
+    "test",
+    "job",
+    "api",
+    "rest"
+  ],
+  "author": "Jhony Terra",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dc143c/banking-api/issues"
+  },
+  "homepage": "https://github.com/dc143c/banking-api#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "nodemon": "^2.0.13",
+    "path-to-regexp": "^6.2.0",
+    "pg": "^8.7.1"
+  }
+}
