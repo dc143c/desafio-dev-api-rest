@@ -1,12 +1,12 @@
-const { Pool, Client } = require('pg')
+const { Client } = require('pg')
 const functionalities = require('../utils/utils')
 
 const client = new Client({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'bank',
-  password: '#C4tf1shB4nkInG',
-  port: 5432,
+    user: 'api_user',
+    host: 'postgres',
+    database: 'bank',
+    password: 'bankpassword',
+    port: 5432
 })
 
 let queries = {
@@ -15,7 +15,7 @@ connect: function() {
         try{
             client.connect(function(err) {
                 if (err) {
-                    reject({"status": 500, "message": "Couldn't get connection from database"});
+                    reject({"status": 500, "message": "Couldn't get connection from database, trying again..."});
                 } else {
                     resolve({"status": 201, "message": "Connected with the database!"});
                 }

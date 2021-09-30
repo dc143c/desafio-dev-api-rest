@@ -1,0 +1,40 @@
+version: '3'
+
+services:
+  api:
+    build: .
+    ports:
+      - "80:80"
+    links:
+      - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy  
+    command: "nodemon index.js"
+    restart: always
+    volumes:
+      - .:/usr/app/
+    environment:
+      DATABASE_URL: postgres://api_user:bankpassword@localhost:5432/bank
+  postgres:
+    image: postgres
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "root" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    restart: always
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+      - APP_DB_USER=api_user
+      - APP_DB_PASS=bankpassword
+      - APP_DB_NAME=bank
+      - ALLOW_IP_RANGE=0.0.0.0/0
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d/
+    ports:
+      - 5432:5432
+
+networks:
+  default:

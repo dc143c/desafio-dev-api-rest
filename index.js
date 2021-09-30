@@ -1,10 +1,7 @@
 /* Libaries */
-const { Router, response } = require('express');
 const express = require('express')
 var app = express();
 const bodyParser = require("body-parser")
-const {match} = require('path-to-regexp')
-const utils = require('./utils/utils')
 
 /* Routes */
 const controllers = require('./controllers/controller.js')
@@ -26,20 +23,34 @@ app.get("*", function (request, response){
 
 /* Application start with database availability verification */
 port = 80
+
+let connectionStatus = false;
+
 async function start(){
     queries.connect().then((connection) => {
         if(connection.status == 500){
-            console.log("It was not possible to connect with our database")
+            connectionStatus = false;
         } else {
+            connectionStatus = true;
             app.listen(port);
-            console.log("Running on http://localhost:80")
+            console.log(`Running on http://localhost:${port}`)
         }
     }).catch((err) => {
         console.log(err.message)
     })
 }
 
-start()
+/* If database is not available, try again in 10s */
+function verify() {
+    start();
+    setTimeout(function() {
+        if(connectionStatus == false){
+            verify()
+        }
+    }, 10000);
+}
+
+verify()
 
 /* Database implemented with Docker:
 docker run --name banking-psql -e POSTGRES_PASSWORD=#C4tf1shB4nkInG -p 5432:5432 -d postgres 
