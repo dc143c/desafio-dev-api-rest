@@ -1,7 +1,8 @@
 const pgsql = require("../connection/queries")
-const utils = require("../utils/utils")
-
 const middleware = {}
+
+/* Afim de diminuir a repetição de queries, foi implementado os middlewares,
+sendo estes responsáveis por funções específicas */
 
 /* USER */
 middleware.createNewUser = async (nome, cpf, datanascimento) => {
@@ -56,7 +57,6 @@ middleware.getOnePerson = async (id) => {
 }
 
 /* CONTA BANCÁRIA */
-
 middleware.createUserBankAccount = async (idPessoa, saldo, limiteSaqueDiario) => {
     return new Promise((resolve, reject) => {
         try{
@@ -83,7 +83,6 @@ middleware.getUserBankAccount = async (idPessoa) => {
     })
 }
 
-
 middleware.getUserBankAccount = async (idPessoa) => {
     return new Promise((resolve, reject) => {
         try{
@@ -100,7 +99,7 @@ middleware.getUserBankAccount = async (idPessoa) => {
 middleware.listSinceLastMonthTransactions = async (id) => {
     return new Promise((resolve, reject) => {
         try{
-            pgsql.getUserBankAccount(id).then((res) => {
+            pgsql.listSinceLastMonthTransactions(id).then((res) => {
                 resolve(res.rows)
             })
         } catch(err){
@@ -148,4 +147,18 @@ middleware.toogleAtivityFromAccount = async (id) => {
         }
     })
 }
+
+middleware.getUserWithdrawInfo = async (id) => {
+    return new Promise((resolve, reject) => {
+        try{
+            pgsql.getWidthdrawInfo(id).then((res) => {
+                resolve(res.rows)
+            })
+        } catch(err){
+            console.log(err)
+            reject(err)
+        }
+    })
+}
+
 module.exports = middleware;

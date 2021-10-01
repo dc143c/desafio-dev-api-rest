@@ -53,7 +53,3 @@ function verify() {
 }
 
 verify()
-
-/* Database implemented with Docker:
-docker run --name banking-psql -e POSTGRES_PASSWORD=#C4tf1shB4nkInG -p 5432:5432 -d postgres 
-*/

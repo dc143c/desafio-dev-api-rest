@@ -1,5 +1,5 @@
 const { Client } = require('pg')
-const functionalities = require('../utils/utils')
+const moment = require('moment')
 
 const client = new Client({
     user: process.env.DB_USERNAME,
@@ -62,11 +62,47 @@ toogleAtivityFromAccount: async function(idConta, status) {
     return client.query(queryText)
 },
 listSinceLastMonthTransactions: async function(idConta) {
-    let data_inicio = functionalities.getDate()
-    let data_fim = functionalities.getLastMonthDate()
+    let data_inicio = moment().add(1, "day").format("MM/DD/YYYY")
+    let data_fim = moment().subtract(1, "month").format("MM/DD/YYYY")
+    let queryText = `select * from tb_transac where idconta = ${idConta} and datatransacao <= cast('${data_inicio}' as date) and datatransacao >= cast('${data_fim}' as date);`
+    return client.query(queryText)
+},
+getWidthdrawInfo: async function (idConta){
+    let dateFin = moment().add(1, "day").format("MM/DD/YYYY")
+    let dateInit = moment().subtract(2, "day").format("MM/DD/YYYY")
     let queryText = `
-    select * from tb_transac where idconta = 1 and datatransacao >= cast('${data_inicio}' as date) and datatransacao <= cast('${data_fim}' as date);`
-    console.log(queryText)
+    select  * from
+    (
+        select
+            cast(sum(valor * -1) as numeric) valor_sacado,
+            idconta
+        from tb_transac
+        where
+            idconta = ${idConta}
+            and valor < cast(0 as money)
+            and datatransacao <= cast('${dateFin}' as date)
+            and datatransacao >= cast('${dateInit}' as date)
+        group by
+            idconta
+    ) a
+    right join 
+    (
+        select
+            cast(saldo as numeric) as saldo,
+            cast(limitesaquediario as numeric) as limitesaquediario,
+            idconta
+        from
+            tb_conta
+        where
+            idconta = ${idConta}
+        group by
+            saldo,
+            limitesaquediario,
+            idconta
+    ) b
+    on
+        a.idconta = b.idconta
+    `
     return client.query(queryText)
 },
 }

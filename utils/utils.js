@@ -3,6 +3,9 @@ const middleware = require("../middlewares/middleware");
 const { cpf } = require("cpf-cnpj-validator");
 const moment = require("moment");
 
+/* Ainda havendo muitas repetições, dessa vez de 
+funções de validação quanto aos parâmetros passados, foram implementadas as funções funcionais. */
+
 let funcionalities = {}
 
 funcionalities.getAllRoutes = (app) => {
@@ -18,26 +21,6 @@ funcionalities.getAllRoutes = (app) => {
     return routes;
 }
 
-funcionalities.getLastMonthDate = () => {
-    var data = new Date(),
-        dia  = data.getDate().toString(),
-        diaF = (dia.length == 1) ? '0'+ String(parseInt(dia)+1) : String(parseInt(dia)+1),
-        mes  = (data.getMonth()+1).toString(), //+1 pois no getMonth Janeiro começa com zero.
-        mesF = (mes.length == 1) ? '0'+mes : mes,
-        anoF = data.getFullYear();
-    return mesF+"/"+diaF+"/"+anoF;
-}
-
-funcionalities.getDate = () => {
-    var data = new Date(),
-        dia  = data.getDate().toString(),
-        diaF = (dia.length == 1) ? '0'+dia : dia,
-        mes  = (data.getMonth()).toString(), //+1 pois no getMonth Janeiro começa com zero.
-        mesF = (mes.length == 1) ? '0'+mes : mes,
-        anoF = data.getFullYear();
-    return mesF+"/"+diaF+"/"+anoF;
-}
-
 funcionalities.checkInformation = async (idperson, idaccount, amount, dateInit, dateFin, transacType) => {
     return new Promise(async (resolve, reject) => {
         let validation = {}    
@@ -51,38 +34,37 @@ funcionalities.checkInformation = async (idperson, idaccount, amount, dateInit, 
         validation.bankAcountExists = true
         validation.bankAcountMatches = true
     
+        let id_person = parseFloat(idperson)
+        let id_conta = parseFloat(idaccount)
         let response = responseModel;
-        if(idperson){
-            if(idperson < -1){
+        if(id_person){
+            if(id_person <= 0){
                 validation.idPersonValidated = false;
             }
             try{
-                let nome = '%' + req.body.nome + '%'
-                let foundPerson =  await middleware.getOnePersonByName(nome)
-                
+                let foundPerson =  await middleware.getOnePerson(id_person)
                 validation.personExists = false;
                 if(foundPerson.length > 0){
                     validation.personExists = true;
-                    if(idaccount){
+                    if(id_conta){
                         let idPessoa = foundPerson[0].idpessoa;
-                        let foundBankAccount = middleware.getUserBankAccount(idPessoa)
-                        
+                        let foundBankAccount = await middleware.getUserBankAccount(idPessoa)
                         validation.bankAcountExists = false;
                         if(foundBankAccount.length > 0){
                             validation.bankAcountExists = true;
                             validation.foundBankAccountID = foundBankAccount[0].idconta
-                            validation.bankAcountMatches = false
-                            if(foundBankAccount[0].idconta = idaccount) {
-                                validation.bankAcountMatches = true
+                            if(foundBankAccount[0].idconta != id_conta) {
+                                validation.bankAcountMatches = false
                             }
                         }
                     }
                 }
             } catch(err) { 
+                console.log(err)
                 response["row-count"] = 0;
                 response["error"]["status"] = true;
+                response["error"]["message"] = "Something may happened at our internal server.";
                 response["results"] = err;
-                response["error"]["message"] = "This is not a valid number. Identity must be greater than 0.";
                 resolve(response)
             }
         } 
@@ -224,7 +206,7 @@ funcionalities.checkCreationInformation = async (nome, doc, datanascimento, sald
         try{
             let nomeFormatado = '%' + nome + '%'
             let foundPerson =  await middleware.getOnePersonByName(nomeFormatado)
-            if(foundPerson > 0){
+            if(foundPerson.length > 0){
                 let bankStatus = await middleware.getUserBankAccount(foundPerson[0].idpessoa)
                 if(bankStatus.length > 0){
                     response["row-count"] = 0;
@@ -256,8 +238,8 @@ funcionalities.checkCreationInformation = async (nome, doc, datanascimento, sald
             response["error"]["message"] = "Missing birthday date. Make sure that dateformat is MDY.";
             resolve(response);
         }
-    
-        if(datanascimento > funcionalities.getDate()){
+        
+        if(datanascimento > moment().format("MM/DD/YYYY")){
             response["row-count"] = 0;
             response["results"] = [];
             response["error"]["status"] = true;
@@ -291,6 +273,27 @@ funcionalities.checkCreationInformation = async (nome, doc, datanascimento, sald
     
         resolve(true)
     })
+}
+
+funcionalities.checkIdentifiers = (id) => {
+    return new Promise((resolve, reject) => {
+        let response = responseModel;
+        if(isNaN(id)){
+            response["row-count"] = 0;
+            response["error"]["status"] = true;
+            response["error"]["message"] = "User identifiers are only setted as Integers.";
+            response["results"] = [];
+            resolve(response);
+        }
+        if(id < 0){
+            response["row-count"] = 0;
+            response["error"]["status"] = true;
+            response["results"] = [];
+            response["error"]["message"] = "This is not a valid number. Identity must be greater than 0.";
+            resolve(response);
+        }
+        resolve(true);
+      })
 }
 
 module.exports = funcionalities;
