@@ -15,6 +15,7 @@ Esta API foi elaborada com as tecnologias:
 - MomentJS
 - Validador de CPF
 
+# E como rodar a aplicação?
 Para rodar a aplicação existem duas formas: 
 
 A primeira é seguir:

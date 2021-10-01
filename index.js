@@ -23,6 +23,10 @@ app.get("*", function (request, response){
     response.send({"message":"This URL is not implemented in this project, you may want to take a closer look on our documentation for better understanding.", "documentation": "https://github.com/dc143c/","routes": controllers.allRoutes})
 })
 
+app.post("*", function (request, response){
+    response.send({"message":"This URL is not implemented in this project, you may want to take a closer look on our documentation for better understanding.", "documentation": "https://github.com/dc143c/","routes": controllers.allRoutes})
+})
+
 /* Application start with database availability verification */
 port = process.env.API_PORT
 
