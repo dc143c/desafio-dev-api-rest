@@ -65,4 +65,4 @@ docker run --name ´[NOME_DB] -e POSTGRES_PASSWORD=[SENHA_DB] -p 5432:5432 -d po
 
 # Nossa documentação
 
-A documentação dessa API se encontra totalmente disponível <a href="https://dc143c.github.io/desafio-dev-api-rest/DOC.pdf" target="_blank">clicando aqui</a>.
+A documentação dessa API se encontra totalmente disponível <a href="https://github.com/dc143c/desafio-dev-api-rest/blob/main/DOC.pdf" target="_blank">clicando aqui</a>.
