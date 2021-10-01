@@ -2,11 +2,11 @@ const { Client } = require('pg')
 const functionalities = require('../utils/utils')
 
 const client = new Client({
-    user: 'api_user',
-    host: 'postgres',
-    database: 'bank',
-    password: 'bankpassword',
-    port: 5432
+    user: process.env.DB_USERNAME,
+    host: process.env.DB_HOST,
+    database: process.env.DB_DATABASE,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT
 })
 
 let queries = {

@@ -1,99 +1,159 @@
 const express = require('express')
 const router = express.Router()
-const pgsql = require("../connection/queries")
 const utils = require("../utils/utils")
+let responseModel = require("../middlewares/response-model.json")
 
-module.exports = router
+/* Afim de diminuir a repetição de queries, foi implementado os middlewares,
+sendo estes responsáveis por funções específicas */
+
+const middleware = require('../middlewares/middleware')
 
 router.post('/user/bank-account', async function (req, res) {    
     /* Criando user */
+    let response = await utils.checkCreationInformation(req.body.nome, req.body.cpf, req.body.datanascimento, req.body.saldo, req.body.limiteSaqueDiario)
+    if(response != true){
+        response["request"] = "create-user-and-bank-account"
+        return res.status(400).send(response)
+    }
     
-    if(!req.body.nome){
-        res.status(400).send({"Error": "Missing name."})
-        return
+    try{
+        let creation = await middleware.createNewUser(req.body.nome, req.body.cpf, req.body.datanascimento)
+    }catch(err) {
+        response["request"] = "create-user-and-bank-account"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["results"] = [];
+        response["error"]["message"] = err;
+        return res.status(500).send(response)
     }
-    if(!req.body.cpf){
-        res.status(400).send({"Error": "Missing CPF document."})
-        return
-    }
-    if(!req.body.datanascimento){
-        res.status(400).send({"Error": "Missing birthday date."})
-        return
-    }
-
-    let creation = await pgsql.createNewUser(req.body.nome, req.body.cpf, req.body.datanascimento)
 
     /* Abrindo conta */
-
     let nome = '%' + req.body.nome + '%'
-    let foundPerson =  await pgsql.getOnePersonByName(nome)
-    let idPessoa = foundPerson.rows[0].idpessoa;
+    let foundPerson =  await middleware.getOnePersonByName(nome)
+    let idPessoa = foundPerson[0].idpessoa;
 
-    if(!req.body.saldo){
-        return res.status(400).send({"message": "Invalid total balance."})
-    }
-    
-    if(!req.body.limiteSaqueDiario){
-        return res.status(400).send({"message": "Invalid balance withdraw."})
-    }
-    
     /* Abrindo conta do banco */
+    try{
+        let bankAccount = middleware.createUserBankAccount(idPessoa, req.body.saldo, req.body.limiteSaqueDiario)
+    } catch(err) {
+        response["request"] = "create-user-and-bank-account"
+        response["row-count"] = 0;
+        response["results"] = [];
+        response["error"]["status"] = true;
+        response["error"]["message"] = err;
+        return res.status(500).send(response)
+    }
+    let foundBankAccount = ""
+    try{
+        foundBankAccount = middleware.getUserBankAccount(idPessoa)
+    } catch(err) {
+        response["request"] = "create-user-and-bank-account"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["results"] = [];
+        response["error"]["message"] = err;
+        return res.status(500).send(response)
+    }
 
-    pgsql.createUserBankAccount(idPessoa, req.body.saldo, req.body.limiteSaqueDiario).then((response) => {
-        res.status(201).send({"message": "Both person and account were created successfully."})
-    }).catch((err) => {
-        res.send(err)
-    })
-
+    /* CREATE RETURN OBJECT */
+    response['request'] = "create-user-and-bank-account"
+    response['row-count'] = 1
+    response.results.push({"user": foundPerson, "bankAccount": foundBankAccount})
+    res.send(response)
     return
 })
 
 router.get(`/user/:filter?`, async function (req, res) {
     if(!req.params.filter){
-        pgsql.getAllPersons().then((response) => {
-            res.send(response.rows)
+        let response = responseModel;
+        middleware.getAllPersons().then((data) => {
+            response["request"] = "search-all-users"
+            response["row-count"] = data.length;
+            response["results"] = data;
+            res.send(response)
         }).catch((err) => {
-            res.send(err)
+            response["request"] = "search-all-users"
+            response["row-count"] = 0
+            response["error"]["status"] = true;
+            response["error"]["message"] = err;
+            response["results"] = [];
+            res.send(response)
         })
         return
     } if(isNaN(parseInt(req.params.filter))){
+        let response = responseModel;
         let nome = '%' + req.params.filter + '%'
-        pgsql.getOnePersonByName(nome).then((response) => {
-            res.send(response.rows)
+        middleware.getOnePersonByName(nome).then((data) => {
+            response["request"] = "search-user-by-name"
+            response["row-count"] = data.length;
+            response["results"] = data;
+            res.send(response)
         }).catch((err) => {
-            res.send(err)
+            response["request"] = "search-user-by-name"
+            response["row-count"] = 0
+            response["results"] = [];
+            response["error"]["status"] = true;
+            response["error"]["message"] = err;
+            res.send(response)
         })
         return
     } if (!isNaN(parseInt(req.params.filter))){
-        pgsql.getOnePerson(req.params.filter).then((response) => {
-            res.send(response.rows)
+        let response = responseModel;
+        middleware.getOnePerson(req.params.filter).then((data) => {
+            response["request"] = "search-user-by-identifier"
+            response["row-count"] = data.length;
+            response["results"] = data;
+            res.send(response)
         }).catch((err) => {
-            res.send(err)
+            response["request"] = "search-user-by-identifier"
+            response["row-count"] = 0
+            response["results"] = [];
+            response["error"]["status"] = true;
+            response["error"]["message"] = err;
+            res.send(response)
         })
         return
     }
 })
 
 router.get('/user/:id/bank-account', async function (req, res) {
-    if(parseInt(req.params.id) <= 0){
-        res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
-        return;
+    let person = req.params.id;
+
+    let verificationResponse = await utils.checkInformation(person, undefined, undefined, undefined, undefined, undefined)
+    if(verificationResponse != true){
+        response["request"] = "search-user-bank-account"
+        res.status(500).send(response)
     }
-    pgsql.getUserBankAccount(req.params.id).then((response) => {
-        res.status(200).send(response.rows)
+    
+    let response = responseModel;
+    middleware.getUserBankAccount(req.params.id).then((data) => {
+        response["request"] = "search-user-bank-account"
+        response["row-count"] = data.length;
+        response["results"] = data;
+        res.status(200).send(response)
     }).catch((err) => {
         res.send(err)
     })
     return
 })
 
-router.get('/user/:id/bank-account/balance/', async function (req, res) {
-    if(parseInt(req.params.id) <= 0){
-        res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
-        return;
+router.get('/user/:id/bank-account/:id_conta/balance/', async function (req, res) {
+    let response = responseModel;
+
+    let person = req.params.id;
+    let conta = req.params.id_conta;
+
+    let verificationResponse = await utils.checkInformation(person, conta, undefined, undefined, undefined, undefined)
+    if(verificationResponse != true){
+        verificationResponse["request"] = "search-user-bank-account-balance"
+        res.status(500).send(response)
     }
-    pgsql.getUserBankAccount(req.params.id).then((response) => {
-        res.status(200).send(response.rows[0].saldo)
+
+    middleware.getUserBankAccount(req.params.id).then((data) => {
+        response["request"] = "search-user-bank-account-balance"
+        response["row-count"] = data.length;
+        response["results"] = {"saldo": data[0].saldo};
+        res.status(200).send(response)
     }).catch((err) => {
         res.send(err)
     })
@@ -102,72 +162,83 @@ router.get('/user/:id/bank-account/balance/', async function (req, res) {
 
 router.get('/user/:id/bank-account/:id_conta/transaction/', async function (req, res) {
     /* Verifica integridade dos dados */
-    if(parseInt(req.params.id) <= 0){
-        res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
-        return;
-    }
     
-    let conta = await pgsql.getUserBankAccount(req.params.id)
-    let idConta = conta.rows[0].idconta;
+    let person = req.params.id;
+    let conta = req.params.id_conta;
 
-    if(conta.rows.length = 0){
-        res.status(400).send({"message": "This user does not have any bank account yet."})
-        return
+    let verificationResponse = await utils.checkInformation(person, conta, undefined, undefined, undefined, undefined)
+    if(verificationResponse != true){
+        verificationResponse["request"] = "search-user-bank-last-month-transactions"
+        res.status(400).send(verificationResponse)
     }
 
-    if(idConta != req.params.id_conta){
-        res.status(400).send({"message": "The informed bank account is not linked to this person.", "accountIdFound": idConta})
-        return
-    }
-    
-    pgsql.listSinceLastMonthTransactions(idConta).then((response) => {
-        res.status(200).send(response.rows)
+    let response = responseModel;
+    middleware.listSinceLastMonthTransactions(idConta).then((data) => {
+        response["request"] = "search-user-bank-last-month-transactions"
+        response["row-count"] = data.length;
+        response["results"] = data;
+        res.status(200).send(response)
     }).catch((err) => {
         res.send(err)
+        response["request"] = "search-user-bank-last-month-transactions"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["error"]["message"] = "Something happened on our internal service.";
+        response["results"] = err;
+        res.status(500).send(response)
     })
 
     return
 })
 
 router.post('/user/:id/bank-account/:id_conta/transaction/', async function (req, res) {
+    /* Define a estrutura da resposta */
+    let response = responseModel;
+
     /* Verifica integridade dos dados */
-    if(parseInt(req.params.id) <= 0){
-        res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
-        return;
-    }
+    let person = req.params.id;
+    let conta = req.params.id_conta;
+    let dateInit = req.body.dataInicio;
+    let dateFin = req.body.dataFinal;
     
-    let conta = await pgsql.getUserBankAccount(req.params.id)
-    let idConta = conta.rows[0].idconta;
-
-    if(conta.rows.length = 0){
-        res.status(400).send({"message": "This user does not have any bank account yet."})
-        return
-    }
-
-    if(idConta != req.params.id_conta){
-        res.status(400).send({"message": "The informed bank account is not linked to this person.", "accountIdFound": idConta})
-        return
+    let verificationResponse = await utils.checkInformation(person, conta, undefined, dateInit, dateFin, undefined)
+    
+    if(verificationResponse != true){
+        verificationResponse["request"] = "create-user-bank-transaction"
+        return res.status(400).send(verificationResponse)
     }
 
     if(!req.body.dataInicio){
-        res.status(400).send({"message": "No initial date for transaction informations was informed."})
-        return
+        response["request"] = "create-user-bank-transaction"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["results"] = [];
+        response["error"]["message"] = "No initial date for transaction informations was informed.";
+        return res.status(400).send(response)
     }
     
     if(!req.body.dataFinal){
-        res.status(400).send({"message": "No final date for transaction informations  was informed."})
-        return
+        response["request"] = "create-user-bank-transaction"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["results"] = [];
+        response["error"]["message"] = "No final date for transaction informations  was informed.";
+        return res.status(400).send(response)
     }
 
-    if(req.body.dataInicio > req.body.dataFinal){
-        res.status(400).send({"message": "The final date cannot be lesser than the initial one."})
-        return
-    }
-    
-    pgsql.listTransactionsByTime(idConta, req.body.dataInicio, req.body.dataFinal).then((response) => {
-        res.status(201).send(response.rows)
+    middleware.listTransactionsByTime(idConta, req.body.dataInicio, req.body.dataFinal).then((data) => {
+        response["request"] = "search-user-bank-account-transactions"
+        response["row-count"] = data.length;
+        response["results"] = data;
+        res.status(200).send(response)
     }).catch((err) => {
-        res.send(err)
+        response["request"] = "search-user-bank-account-transactions"
+        response["row-count"] = 0;
+        response["results"] = err;
+        response["error"]["status"] = true;
+        response["results"] = [];
+        response["error"]["message"] = "Something may happened at our internal server.";
+        res.status(500).send(err)
     })
 
     return
@@ -175,91 +246,103 @@ router.post('/user/:id/bank-account/:id_conta/transaction/', async function (req
 
 router.post('/user/:id/bank-account/:id_conta/transaction/:type/', async function (req, res) {
     /* Verifica integridade dos dados */
-    if(parseInt(req.params.id) <= 0){
-        res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
-        return;
-    }
-    
-    let conta = await pgsql.getUserBankAccount(req.params.id)
-    let idConta = conta.rows[0].idconta;
+       
+    let person = req.params.id;
+    let conta = req.params.id_conta;
+    let valor = req.body.valor;
+    let tipo = req.params.type;
 
-    if(conta.rows.length = 0){
-        res.status(400).send({"message": "This user does not have any bank account yet."})
-        return
-    }
-
-    if(idConta != req.params.id_conta){
-        res.status(400).send({"message": "The informed bank account is not linked to this person.", "accountIdFound": idConta})
-        return
+    let verificationResponse = await utils.checkInformation(person, conta, valor, undefined, undefined, tipo)
+    if(verificationResponse != true){
+        verificationResponse["request"] = "search-user-bank-last-month-transactions"
+        return res.status(400).send(verificationResponse)
     }
 
     if(!req.body.valor){
-        res.status(400).send({"message": "No amount for this transaction was informed."})
-        return
+        response["request"] = "search-user-bank-last-month-transactions"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["results"] = [];
+        response["error"]["message"] = "No amount for this transaction was informed.";
+        return res.status(400).send(response)
     }
     
-    let valor = parseFloat(req.body.valor)
+    valor = parseFloat(req.body.valor)
 
-    /* Se for deposito */
-    if(req.params.type = "1") {
-        pgsql.createTransactionAccount(idConta, valor).then((response) => {
-            res.status(201).send(response.rows)
-        }).catch((err) => {
-            res.send(err)
-        })
-    } else {
-        /* Se for saque, verifica se o valor se encontra negativo */
+    /* Se for saque */
+    if(req.params.type = "2") {
         if(valor > 0){
             valor = valor * (-1);
         }
-        pgsql.createTransactionAccount(idConta, valor).then((response) => {
-            res.status(201).send(response.rows)
-        }).catch((err) => {
-            res.send(err)
-        })
     }
+
+    let response = responseModel;
+    middleware.createTransactionAccount(idConta, valor).then((data) => {
+        response["request"] = "create-user-bank-account-transaction"
+        response["row-count"] = data.length;
+        response["results"] = data;
+        res.status(201).send(response)
+    }).catch((err) => {
+        response["request"] = "create-user-bank-account-transaction"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["results"] = [];
+        response["error"]["message"]  = err;
+        return res.status(400).send(response)
+    })
     return
 })
 
-router.post('/user/:id/bank-account/:id_conta/toogleActivity', async function (req, res) {
+router.post('/user/:id/bank-account/:id_conta/toogleactivity', async function (req, res) {
     /* Verifica integridade dos dados */
     if(parseInt(req.params.id) <= 0){
         res.status(400).send({"message": "This is not a valid number. Identity must be greater than 0."});
         return;
     }
     
-    let conta = await pgsql.getUserBankAccount(req.params.id)
-    let idConta = conta.rows[0].idconta;
-    let status = conta.rows[0].flagative;
+    let conta = await middleware.getUserBankAccount(req.params.id)
 
-    if(conta.rows.length = 0){
-        res.status(400).send({"message": "This user does not have any bank account yet."})
-        return
+    let idConta = conta[0].idconta;
+    let status = conta[0].flagative;
+
+    if(conta.length = 0){
+        response["request"] = "change-account-status"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["results"] = [];
+        response["error"]["message"] = "This user does not have any bank account yet.";
+        return res.status(400).send(response)
     }
 
     if(idConta != req.params.id_conta){
-        res.status(400).send({"message": "The informed bank account is not linked to this person.", "accountIdFound": idConta})
-        return
+        response["request"] = "change-account-status"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["results"] = {"accountIdFound": idConta};
+        response["error"]["message"] = "The informed bank account is not linked to this person.";
+        return res.status(400).send(response)
     }
-
-    if(status == true){
-        pgsql.toogleAtivityFromAccount(idConta, false).then((response) => {
-            res.status(200).send({"message": "The bank account status was set as desactivated."})
-        }).catch((err) => {
-            res.send(err)
-        })
-    } else {
-        pgsql.toogleAtivityFromAccount(idConta, true).then((response) => {
-            res.status(200).send({"message": "The bank account status was set as activated."})
-        }).catch((err) => {
-            res.send(err)
-        })
-    }
+    let response = responseModel;
+    middleware.toogleAtivityFromAccount(idConta, (!status)).then((data) => {
+        response["request"] = "change-account-status"
+        response["row-count"] = data.length;
+        response["results"] = `The bank account ${idConta} status was set as desactivated.`;
+        res.status(200).send(response)
+    }).catch((err) => {
+        response["request"] = "change-account-status"
+        response["row-count"] = 0;
+        response["error"]["status"] = true;
+        response["error"]["message"] = err
+        return res.status(400).send(response)
+    })
 
     return
 })
 
 router.allRoutes = utils.getAllRoutes(router);
+
+
+module.exports = router
 
 /*
 toogleAtivityFromAccount

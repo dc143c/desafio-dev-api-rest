@@ -15,7 +15,12 @@ services:
     volumes:
       - .:/usr/app/
     environment:
-      DATABASE_URL: postgres://api_user:bankpassword@localhost:5432/bank
+      API_PORT: 80
+      DB_PORT: 5432
+      DB_USERNAME: api_user
+      DB_PASSWORD: bankpassword
+      DB_HOST: postgres
+      DB_DATABASE: bank
   postgres:
     image: postgres
     healthcheck:

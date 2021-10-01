@@ -1,7 +1,9 @@
+require('dotenv').config();
 /* Libaries */
 const express = require('express')
 var app = express();
 const bodyParser = require("body-parser")
+
 
 /* Routes */
 const controllers = require('./controllers/controller.js')
@@ -22,7 +24,7 @@ app.get("*", function (request, response){
 })
 
 /* Application start with database availability verification */
-port = 80
+port = process.env.API_PORT
 
 let connectionStatus = false;
 
