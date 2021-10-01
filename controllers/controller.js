@@ -282,6 +282,13 @@ router.post('/user/:id/bank-account/:id_conta/transaction/:type/', async functio
         return res.status(400).send(responseErr)
     }
 
+    if(tipo === 1){
+        if(valor < 0){
+            let responseErr = setResponse("search-user-bank-last-month-transactions", 0, 1, "The amount cannot be negative for deposits.", [])
+            return res.status(400).send(responseErr)
+        }
+    }
+
     /* Se for saque */
     if(tipo === 2) {
         if(valor < 0){
