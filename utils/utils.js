@@ -40,9 +40,7 @@ funcionalities.getDate = () => {
 
 funcionalities.checkInformation = async (idperson, idaccount, amount, dateInit, dateFin, transacType) => {
     return new Promise(async (resolve, reject) => {
-        let validation = {}
-        response["results"] = [];
-    
+        let validation = {}    
         validation.transacTypeInRange = true
         validation.isAmountNumber = true
         validation.dateFinValidated = true
